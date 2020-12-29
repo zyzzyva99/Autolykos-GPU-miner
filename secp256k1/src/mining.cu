@@ -10,16 +10,19 @@
 #include <cuda.h>
 
 
+//Concatenate hi : lo, shift left by shift & 31 bits, return the most significant 32 bits.
+__device__ unsigned int __funnelshift_l(unsigned int  lo, unsigned int  hi, unsigned int  shift);
 
-const __constant__ uint64_t ivals[8] = {  
-    0x6A09E667F2BDC928,                                 
-    0xBB67AE8584CAA73B,                                 
-    0x3C6EF372FE94F82B,                                 
-    0xA54FF53A5F1D36F1,                                 
-    0x510E527FADE682D1,                                 
-    0x9B05688C2B3E6C1F,                                 
-    0x1F83D9ABFB41BD6B,                                 
-    0x5BE0CD19137E2179 
+
+const __constant__ uint64_t ivals[8] = {
+    0x6A09E667F2BDC928,
+    0xBB67AE8584CAA73B,
+    0x3C6EF372FE94F82B,
+    0xA54FF53A5F1D36F1,
+    0x510E527FADE682D1,
+    0x9B05688C2B3E6C1F,
+    0x1F83D9ABFB41BD6B,
+    0x5BE0CD19137E2179
 };
 
 
@@ -88,7 +91,7 @@ __global__ void BlakeHash(const uint32_t* data, const uint64_t base, uint32_t* B
     for(int ii = 0; ii < 4; ii++)
     {
         tid = (NONCES_PER_ITER/4)*ii + threadIdx.x + blockDim.x * blockIdx.x;
-        
+
         asm volatile (
             "add.cc.u32 %0, %1, %2;":
             "=r"(non[0]): "r"(((uint32_t *)&base)[0]), "r"(tid)
@@ -102,32 +105,32 @@ __global__ void BlakeHash(const uint32_t* data, const uint64_t base, uint32_t* B
         ((uint32_t*)(&tmp))[0] = __byte_perm( non[1], 0 , 0x0123);
         ((uint32_t*)(&tmp))[1] = __byte_perm( non[0], 0 , 0x0123);
 
-        B2B_IV(aux);                                                                           
-        B2B_IV(aux + 8);                                                           
-        aux[0] = ivals[0];                                                               
-        ((uint64_t *)(aux))[12] ^= 40;                         
-        ((uint64_t *)(aux))[13] ^= 0;       
-                                                
-        ((uint64_t *)(aux))[14] = ~((uint64_t *)(aux))[14];                        
-        
-        ((uint64_t *)(aux))[16] = ((uint64_t *)(((ctx_t *)(ctx))->b))[ 0];         
-        ((uint64_t *)(aux))[17] = ((uint64_t *)(((ctx_t *)(ctx))->b))[ 1];         
-        ((uint64_t *)(aux))[18] = ((uint64_t *)(((ctx_t *)(ctx))->b))[ 2];         
-        ((uint64_t *)(aux))[19] = ((uint64_t *)(((ctx_t *)(ctx))->b))[ 3];         
-        ((uint64_t *)(aux))[20] = tmp;         
-        ((uint64_t *)(aux))[21] = 0;         
-        ((uint64_t *)(aux))[22] = 0 ;      
-        ((uint64_t *)(aux))[23] = 0  ;       
-        ((uint64_t *)(aux))[24] = 0  ;      
-        ((uint64_t *)(aux))[25] = 0  ;     
-        ((uint64_t *)(aux))[26] = 0  ;       
-        ((uint64_t *)(aux))[27] = 0  ;       
-        ((uint64_t *)(aux))[28] = 0  ;      
-        ((uint64_t *)(aux))[29] = 0  ;       
-        ((uint64_t *)(aux))[30] = 0  ;      
-        ((uint64_t *)(aux))[31] = 0  ;       
-                                                                                    
-        B2B_MIX(aux, aux + 16);                                                    
+        B2B_IV(aux);
+        B2B_IV(aux + 8);
+        aux[0] = ivals[0];
+        ((uint64_t *)(aux))[12] ^= 40;
+        ((uint64_t *)(aux))[13] ^= 0;
+
+        ((uint64_t *)(aux))[14] = ~((uint64_t *)(aux))[14];
+
+        ((uint64_t *)(aux))[16] = ((uint64_t *)(((ctx_t *)(ctx))->b))[ 0];
+        ((uint64_t *)(aux))[17] = ((uint64_t *)(((ctx_t *)(ctx))->b))[ 1];
+        ((uint64_t *)(aux))[18] = ((uint64_t *)(((ctx_t *)(ctx))->b))[ 2];
+        ((uint64_t *)(aux))[19] = ((uint64_t *)(((ctx_t *)(ctx))->b))[ 3];
+        ((uint64_t *)(aux))[20] = tmp;
+        ((uint64_t *)(aux))[21] = 0;
+        ((uint64_t *)(aux))[22] = 0 ;
+        ((uint64_t *)(aux))[23] = 0  ;
+        ((uint64_t *)(aux))[24] = 0  ;
+        ((uint64_t *)(aux))[25] = 0  ;
+        ((uint64_t *)(aux))[26] = 0  ;
+        ((uint64_t *)(aux))[27] = 0  ;
+        ((uint64_t *)(aux))[28] = 0  ;
+        ((uint64_t *)(aux))[29] = 0  ;
+        ((uint64_t *)(aux))[30] = 0  ;
+        ((uint64_t *)(aux))[31] = 0  ;
+
+        B2B_MIX(aux, aux + 16);
 
         uint64_t hsh;
         #pragma unroll
@@ -145,7 +148,7 @@ __global__ void BlakeHash(const uint32_t* data, const uint64_t base, uint32_t* B
 
 
 ////////////////////////////////////////////////////////////////////////////////
-//  Block mining                                                               
+//  Block mining
 ////////////////////////////////////////////////////////////////////////////////
 __global__ void BlockMining(
     // boundary for puzzle
@@ -162,33 +165,33 @@ __global__ void BlockMining(
 {
     uint32_t tid = threadIdx.x;
 
- 
+
     uint32_t r[9];
 
     uint32_t indices[32];
-    uint32_t *tmparr = indices + 2;    
+    uint32_t *tmparr = indices + 2;
     uint32_t *i1 = indices;
-    
+
     #pragma unroll
     for(int ii = 0; ii < 1; ii++)
     {
         tid = ii*(THREADS_PER_ITER/4) + threadIdx.x + blockDim.x * blockIdx.x;
-   
+
         uint32_t j;
         i1[0] = ( (BHashes[tid]) & N_MASK) << 3;
         i1[1] = ((( BHashes[tid] << 8) | (BHashes[THREADS_PER_ITER + tid] >> 24)) & N_MASK) << 3;
-        
+
         #pragma unroll
         for (uint32_t k = 2; k < K_LEN-4; ++k)
         {
             i1[k] = (__funnelshift_l( BHashes[ ((k>>2) + 1)*THREADS_PER_ITER + tid], BHashes[(k>>2)*THREADS_PER_ITER + tid], ((k%4) << 3) ) & N_MASK) << 3;
         }
-        #pragma unroll         
+        #pragma unroll
         for (uint32_t k = K_LEN-4; k < K_LEN; ++k)
         {
             i1[k] = (__funnelshift_l( BHashes[ tid], BHashes[(k>>2)*THREADS_PER_ITER + tid], ((k%4) << 3) ) & N_MASK) << 3;
         }
-        
+
         asm volatile (
             "add.cc.u32 %0, %1, %2;":
             "=r"(r[6]): "r"(hashes[i1[0] + 6]), "r"(hashes[i1[1] + 6])
@@ -206,7 +209,7 @@ __global__ void BlockMining(
         }
 
         asm volatile ("addc.u32 %0, 0, 0;": "=r"(r[8]));
-        
+
         // remaining additions
         #pragma unroll
         for (uint32_t k = 2; k < K_LEN-4; ++k)
@@ -284,7 +287,7 @@ __global__ void BlockMining(
             }
 
             asm volatile ("addc.u32 %0, 0, 0;": "=r"(r[8]));
-          
+
             // remaining additions
             #pragma unroll
             for (uint32_t k = 2; k < K_LEN-4; ++k)
@@ -349,9 +352,9 @@ __global__ void BlockMining(
             // 20 bytes
             uint32_t * med = tmparr;
             // 4 bytes
-            uint32_t * d = i1; 
+            uint32_t * d = i1;
             uint32_t * carry = d;
-            //uint32_t *d = 
+            //uint32_t *d =
             d[0] = r[8];
 
             //================================================================//
@@ -479,13 +482,13 @@ __global__ void BlockMining(
                     )
                 );
 
-            
+
 
             if(j)
             {
 
-                
-                valid[0] = tid+1; 
+
+                valid[0] = tid+1;
                 #pragma unroll
                 for (int i = 0; i < NUM_SIZE_32; ++i)
                 {
@@ -493,13 +496,13 @@ __global__ void BlockMining(
                 }
 
             }
-            
-        
+
+
         }
-        
+
     }
 
-  
+
 }
 
 // mining.cu
